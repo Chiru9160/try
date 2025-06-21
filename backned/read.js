@@ -33,15 +33,11 @@ if (!fs.existsSync(uploadDir)) {
   console.log('Uploads folder created at:', uploadDir);
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
+// Configure multer for in-memory file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
-
-// File upload route
+// File upload route (process file in memory)
 app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -53,9 +49,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Semester is required' });
     }
 
-    console.log('File received:', req.file.filename, 'for semester:', semester);
+    console.log('File received in memory for semester:', semester);
 
-    const result = await processPdf(req.file.path, semester, req.file.filename);
+    // Pass the buffer instead of file path
+    const result = await processPdf(req.file.buffer, semester, req.file.originalname);
     
     res.json({
       success: true,

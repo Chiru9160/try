@@ -4,7 +4,7 @@ import { getStudentModel } from "./Models/student.js";
 import BranchPerformance from './Models/branchPerformance.js';
 import { sendResultEmail } from './Config/EmailConfig.js';
 
-export async function processPdf(filePath, semester, processId) {
+export async function processPdf(fileBuffer, semester, processId) {
     if (!semester || typeof semester !== "string") {
         throw new Error("Invalid semester format");
     }
@@ -123,13 +123,8 @@ export async function processPdf(filePath, semester, processId) {
     }
 
     return new Promise((resolve, reject) => {
-        fs.readFile(filePath, (readErr, buffer) => {
-            if (readErr) {
-                console.error("File read error:", readErr);
-                return reject(readErr);
-            }
-
-            pdf2table.parse(buffer, async (parseErr, rows) => {
+        pdf2table.parse(fileBuffer, (err, rows, rowsdebug) => {
+            (async () => {
                 try {
                     console.log("Initial rows:", rows.slice(0, 3));
 
@@ -214,10 +209,8 @@ export async function processPdf(filePath, semester, processId) {
                     try {
                         // Process students one at a time
                         for (const student of processedStudents) {
-                            // Add email to student data
                             student.email = getStudentEmail(student.roll);
-                            
-                            // Find existing student or create new one
+
                             let existingStudent = await StudentModel.findOne({ roll: student.roll });
                             
                             if (existingStudent) {
@@ -269,7 +262,6 @@ export async function processPdf(filePath, semester, processId) {
                             savedCount: processedStudents.length,
                             success: true 
                         });
-
                     } catch (dbError) {
                       console.error("Database save error:", dbError);
                       reject(dbError);
@@ -279,7 +271,7 @@ export async function processPdf(filePath, semester, processId) {
                     console.error("Processing error:", error);
                     reject(error);
                 }
-            });
+            })();
         });
     });
 }
